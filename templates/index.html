@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Parser Admin Panel</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .controls { margin-bottom: 20px; padding: 15px; background: #f9f9f9; border-radius: 5px; display: flex; gap: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border: 1px solid #ddd; }
+        th { background-color: #f2f2f2; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛠 Парсер | Админ-панель</h1>
+
+        <div class="controls">
+            <input type="text" id="urlInput" placeholder="Вставьте URL для парсинга" style="flex:1; padding:5px;">
+            
+            <select id="categoryInput">
+                {% for cat in categories %}
+                    <option value="{{ cat }}">{{ cat }}</option>
+                {% endfor %}
+            </select>
+            
+            <button onclick="runParser()">Запустить парсинг</button>
+
+            <select id="categoryFilter">
+                <option value="">Все категории</option>
+                {% for cat in categories %}
+                    <option value="{{ cat }}">{{ cat }}</option>
+                {% endfor %}
+            </select>
+            <button onclick="exportExcel()">Выгрузить в Excel</button>
+        </div>
+
+
+        <p id="message"></p>
+
+        <h2>📊 Собранные данные (Последние 50)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Заголовок</th>
+                    <th>Категория</th>
+                    <th>URL</th>
+                    <th>Дата парсинга</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.id }}</td>
+                    <td>{{ item.title }}</td>
+                    <td>{{ item.category }}</td>
+                    <td><a href="{{ item.url }}" target="_blank">Ссылка</a></td>
+                    <td>{{ item.parse_date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const messageEl = document.getElementById('message');
+
+        async function runParser() {
+        messageEl.className = '';
+        messageEl.textContent = 'Запуск парсинга...';
+
+        const url = document.getElementById('urlInput').value;
+        const category = document.getElementById('categoryInput').value;
+
+        if (!url) {
+            messageEl.className = 'error';
+            messageEl.textContent = 'Укажите URL!';
+            return;
+        }
+
+        try {
+            const response = await fetch('/run-parser/', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url, category })
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                messageEl.className = 'success';
+                messageEl.textContent = '' + result.message + ' Обновите страницу через 10-15 секунд.';
+            } else {
+                messageEl.className = 'error';
+                messageEl.textContent = 'Ошибка запуска: ' + result.detail;
+            }
+        } catch (e) {
+            messageEl.className = 'error';
+            messageEl.textContent = 'Ошибка сети: ' + e.message;
+        }
+    }
+
+        function exportExcel() {
+            const category = document.getElementById('categoryFilter').value;
+            const url = `/export-excel/?category=${category}`;
+            window.open(url, '_blank');
+        }
+    </script>
+</body>
+</html>
